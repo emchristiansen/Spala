@@ -1,0 +1,1 @@
+package object spala extends OrthogonalMatchingPursuit with Util
