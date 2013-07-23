@@ -137,54 +137,81 @@ trait OrthogonalMatchingPursuit {
     }
     helper(Set[Int]())
   }
-  
+
   def ompSolutionAtPenalty(
-      penalty: Double,
-      dictionary: Dictionary,
-      observation: DenseVector[Double]): (ActiveSet, Double) = {
+    penalty: Double,
+    dictionary: Dictionary,
+    observation: DenseVector[Double]): (ActiveSet, Double) = {
     (ompSolutions(dictionary, observation).sliding(2).dropWhile {
-      case Stream((_, leftError), (_, rightError)) => 
-        leftError - rightError > penalty 
+      case Stream((_, leftError), (_, rightError)) =>
+        leftError - rightError > penalty
     }).toStream.head.head
   }
 
+  def totalError(
+    penalty: Double,
+    observations: Seq[DenseVector[Double]],
+    dictionary: Dictionary): Double = {
+    (observations map { observation =>
+      ompSolutionAtPenalty(penalty, dictionary, observation)._2
+    }).sum
+  }
+
+  def naturals: Stream[Int] = {
+    def helper(int: Int): Stream[Int] = int #:: helper(int + 1)
+
+    helper(0)
+  }
+
   def updateDictionary(
-      penalty: Double,
-      observations: Seq[DenseVector[Double]],
-      dictionary: Dictionary): Dictionary = {
+    penalty: Double,
+    observations: Seq[DenseVector[Double]],
+    dictionary: Dictionary,
+    activeSets: Seq[ActiveSet]): Dictionary = {
     val sourceMatrix = {
       val matrix = DenseMatrix.zeros[Double](dictionary.size, observations.size)
-      for ((observation, index) <- observations.zipWithIndex) {
-        val (activeSet, _) = 
-          ompSolutionAtPenalty(penalty, dictionary, observation)
+      for (
+        (observation, activeSet, index) <- (observations, activeSets, naturals).zipped
+      ) {
         val source = bestSource(dictionary, observation, activeSet)
         matrix(::, index) := source
       }
       matrix
     }
-    
+
     val observationMatrix = {
-      val matrix = 
+      val matrix =
         DenseMatrix.zeros[Double](observations.head.size, observations.size)
       for ((atom, index) <- observations.zipWithIndex) {
         matrix(::, index) := atom
       }
       matrix
     }
-    
-    val updatedDictionaryMatrix = (observationMatrix \ sourceMatrix)
-    
-    ??? 
+
+    println(observationMatrix.rows)
+    println(observationMatrix.cols)
+    println(sourceMatrix.rows)
+    println(sourceMatrix.cols)
+
+    //    val updatedDictionaryMatrix = (observationMatrix \ sourceMatrix)
+    val updatedDictionaryMatrix = observationMatrix * pinv(sourceMatrix)
+
+    println(updatedDictionaryMatrix.rows)
+    println(updatedDictionaryMatrix.cols)
+
+    (0 until updatedDictionaryMatrix.cols) map { index =>
+      UnitVector.normalize(updatedDictionaryMatrix(::, index))
+    }
   }
-  
-//  /**
-//   * Infers the dictionary .
-//   */
-//  def inferDictionary(
-//    X: DenseMatrix[Double],
-//    S: DenseMatrix[Double]): DenseMatrix[Double] = {
-//    assert(X.cols == S.cols)
-//
-//    normalizeDictionary(X \ S)
-//  }
+
+  //  /**
+  //   * Infers the dictionary .
+  //   */
+  //  def inferDictionary(
+  //    X: DenseMatrix[Double],
+  //    S: DenseMatrix[Double]): DenseMatrix[Double] = {
+  //    assert(X.cols == S.cols)
+  //
+  //    normalizeDictionary(X \ S)
+  //  }
 }

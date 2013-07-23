@@ -12,12 +12,13 @@ import com.sksamuel.scrimage.Image
 class TestFunGeneratorSuite extends FunGeneratorSuite {
   val image = Image(getClass.getResourceAsStream("/grass.png"))
 
-  val trainingSet = (0 until 129) map { _ =>
+  val trainingSet = (0 until 257) map { _ =>
     imageToVector(randomPatch(8, image).copy)
   }
 
   val observation = trainingSet.head
-  val dictionary = trainingSet.tail.map(UnitVector.normalize)
+  val dictionary = trainingSet.tail.take(128).map(UnitVector.normalize)
+  val otherObservations = trainingSet.drop(129)
 
   val genAtomIndex = Gen.posNum[Int] map { _ % 128 }
   val genActiveSet = Gen.listOf(genAtomIndex) map { _.toSet }
@@ -88,7 +89,30 @@ class TestFunGeneratorSuite extends FunGeneratorSuite {
       }
     }
 
+  test("updating a dictionary should not increase error", FastTest) {
+    val penalty = 10
+    //    val errorBefore =
+    //      totalError(penalty, otherObservations, dictionary.take(16))
 
+    val activeSets = otherObservations map { observation =>
+      ompSolutionAtPenalty(penalty, dictionary.take(16), observation)._1
+    }
+//
+//    def error(dictionary: Dictionary) = {
+//      (otherObservations, activeSets).zipped map {
+//        case (observation, activeSet) =>
+//          activeSetError(dictionary, observation, activeSet)
+//      } sum
+//    }
+//
+//    val errorBefore = error(dictionary.take(16))
+    
+//    val updatedDictionary = updateDictionary(
+//      penalty,
+//      otherObservations,
+//      dictionary.take(16),
+//      activeSets)
+  }
 
   test("a vanilla unit test", InstantTest) {
     val x = 1
